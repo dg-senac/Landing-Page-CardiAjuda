@@ -36,4 +36,11 @@ Tipografia: Open Sans.
   respeitam `prefers-reduced-motion` e animam apenas `transform`/`opacity`.
 - O modal de acesso e a classificação de medições são **demonstrações** (sem backend;
   dados locais em `localStorage`).
+- A classificação usa a **Diretriz Brasileira de Hipertensão Arterial (SBC, 2020)** para
+  medida de consultório — sempre a categoria mais alta entre sistólica e diastólica
+  (ótima &lt; 120/80 · normal 120–129/80–84 · pré-hipertensão 130–139/85–89 ·
+  estágios 1 a 3 a partir de 140/90 · hipotensão &lt; 90/60) — e os critérios da
+  **SBD/OMS** para glicemia de jejum (normal 70–99 · pré-diabetes 100–125 ·
+  diabetes ≥ 126 · hipoglicemia &lt; 70 mg/dL). As faixas também estão visíveis
+  no próprio site, no bloco “Tabelas de referência usadas na classificação”.
 - Conteúdo de demonstração (números, depoimentos, mockups) deve ser revisado antes da publicação.
