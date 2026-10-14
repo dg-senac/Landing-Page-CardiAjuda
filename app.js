@@ -1,1298 +1,615 @@
-document.addEventListener("DOMContentLoaded", () => {
-  /* =========================================================
-     CARDIAJUDA — APP.JS
-     Cadastro + Login + Onboarding + Área personalizada
-     ========================================================= */
+/* ==========================================================================
+   CardiAjuda — Landing Page
+   Módulos: header, menu mobile, acesso (demo), medição (demo), animações
+   --------------------------------------------------------------------------
+   - Sem dependências externas além de GSAP + ScrollTrigger (vendored).
+   - Animações: fade + slide-up sutis (≤0.8s), stagger discreto, parallax
+     leve no hero e contadores animados. Respeita prefers-reduced-motion.
+   ========================================================================== */
 
-  const authView = document.querySelector("#auth-view");
-  const onboardingView = document.querySelector("#onboarding-view");
-  const dashboardView = document.querySelector("#dashboard-view");
+(function () {
+  "use strict";
 
-  const loginForm = document.querySelector("#login-form");
-  const signupForm = document.querySelector("#signup-form");
+  /* ---------- Helpers ---------- */
+  const $ = (selector, scope = document) => scope.querySelector(selector);
+  const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
+  const prefersReducedMotion = () =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const loginTab = document.querySelector("#login-tab");
-  const signupTab = document.querySelector("#signup-tab");
+  /* ==========================================================================
+     Header — sombra sutil ao rolar
+     ========================================================================== */
+  function initHeader() {
+    const header = $(".header");
+    if (!header) return;
 
-  const authClose = document.querySelector("#auth-close");
-
-  const checkinTitle = document.querySelector("#checkin-title");
-  const checkinSubtitle = document.querySelector("#checkin-subtitle");
-
-  const progressFill = document.querySelector("#progress-fill");
-  const progressText = document.querySelector("#progress-text");
-
-  const backButton = document.querySelector("#checkin-back");
-  const nextButton = document.querySelector("#checkin-next");
-  const skipButton = document.querySelector("#checkin-skip");
-  const closeCheckinButton = document.querySelector("#checkin-close");
-
-  const logoutButton = document.querySelector("#logout");
-
-  let currentStep = 1;
-  const totalSteps = 4;
-
-  let onboardingData = {
-    diagnosis: "",
-    monitoring: "",
-    tracking: [],
-    support: ""
-  };
-
-  /* =========================================================
-     STORAGE
-     ========================================================= */
-
-  function getStoredUser() {
-    try {
-      return JSON.parse(localStorage.getItem("cardiajudaUser")) || null;
-    } catch (error) {
-      return null;
-    }
-  }
-
-  function saveUser(user) {
-    localStorage.setItem(
-      "cardiajudaUser",
-      JSON.stringify(user)
-    );
-  }
-
-  function clearUser() {
-    localStorage.removeItem("cardiajudaUser");
-  }
-
-  /* =========================================================
-     AUTH
-     ========================================================= */
-
-  function setAuthMode(mode) {
-    if (!loginForm || !signupForm) return;
-
-    const loginMode = mode === "login";
-
-    loginForm.classList.toggle("hidden", !loginMode);
-    signupForm.classList.toggle("hidden", loginMode);
-
-    loginTab?.classList.toggle("active", loginMode);
-    signupTab?.classList.toggle("active", !loginMode);
-  }
-
-  function openAuth(mode = "login") {
-    if (!authView) return;
-
-    setAuthMode(mode);
-
-    authView.classList.remove("hidden");
-
-    document.body.classList.add("auth-open");
-
-    /*
-     * Impede que o clique no botão continue seguindo
-     * para alguma âncora da página.
-     */
-    window.scrollTo({
-      top: window.scrollY,
-      behavior: "auto"
-    });
-
-    requestAnimationFrame(() => {
-      authView.classList.add("show");
-    });
-  }
-
-  function closeAuth() {
-    if (!authView) return;
-
-    authView.classList.remove("show");
-
-    document.body.classList.remove("auth-open");
-
-    setTimeout(() => {
-      authView.classList.add("hidden");
-    }, 250);
-  }
-
-  /* =========================================================
-     BOTÕES DE LOGIN / CADASTRO
-     ========================================================= */
-
-  document.addEventListener("click", (event) => {
-    const button = event.target.closest(
-      "[data-auth], #login-btn, #signup-btn, #create-account, #start-now"
-    );
-
-    if (!button) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-
-    /*
-     * Descobre qual tela deve abrir.
-     */
-    const action =
-      button.dataset.auth ||
-      button.dataset.action ||
-      "";
-
-    const text = button.textContent
-      .trim()
-      .toLowerCase();
-
-    if (
-      action === "signup" ||
-      action === "register" ||
-      action === "cadastro" ||
-      text.includes("criar conta") ||
-      text.includes("começar agora") ||
-      text.includes("comece agora")
-    ) {
-      openAuth("signup");
-      return;
-    }
-
-    openAuth("login");
-  });
-
-  /* =========================================================
-     ABAS
-     ========================================================= */
-
-  loginTab?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    setAuthMode("login");
-  });
-
-  signupTab?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    setAuthMode("signup");
-  });
-
-  /* =========================================================
-     FECHAR AUTH
-     ========================================================= */
-
-  authClose?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    closeAuth();
-  });
-
-  authView?.addEventListener("click", (event) => {
-    if (event.target === authView) {
-      closeAuth();
-    }
-  });
-
-  /* =========================================================
-     CADASTRO
-     ========================================================= */
-
-  signupForm?.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const nameInput =
-      document.querySelector("#signup-name") ||
-      signupForm.querySelector(
-        'input[name="name"], input[type="text"]'
-      );
-
-    const emailInput =
-      document.querySelector("#signup-email") ||
-      signupForm.querySelector(
-        'input[name="email"], input[type="email"]'
-      );
-
-    const passwordInput =
-      document.querySelector("#signup-password") ||
-      signupForm.querySelector(
-        'input[name="password"], input[type="password"]'
-      );
-
-    const name = nameInput?.value.trim() || "";
-    const email = emailInput?.value.trim().toLowerCase() || "";
-    const password = passwordInput?.value || "";
-
-    if (!name) {
-      alert("Digite seu nome.");
-      nameInput?.focus();
-      return;
-    }
-
-    if (!email) {
-      alert("Digite seu e-mail.");
-      emailInput?.focus();
-      return;
-    }
-
-    if (!password) {
-      alert("Digite uma senha.");
-      passwordInput?.focus();
-      return;
-    }
-
-    const existingUser = getStoredUser();
-
-    if (existingUser && existingUser.email === email) {
-      alert("Este e-mail já está cadastrado.");
-      return;
-    }
-
-    const user = {
-      name: name,
-      email: email,
-      password: password,
-      onboardingCompleted: false,
-      onboarding: null
+    let ticking = false;
+    const update = () => {
+      header.classList.toggle("is-scrolled", window.scrollY > 8);
+      ticking = false;
     };
 
-    saveUser(user);
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!ticking) {
+          ticking = true;
+          requestAnimationFrame(update);
+        }
+      },
+      { passive: true }
+    );
+    update();
+  }
 
-    closeAuth();
+  /* ==========================================================================
+     Menu mobile
+     ========================================================================== */
+  function initMobileMenu() {
+    const toggle = $("#menu-toggle");
+    const menu = $("#mobile-menu");
+    if (!toggle || !menu) return;
 
-    setTimeout(() => {
-      startOnboarding(user);
-    }, 300);
-  });
+    let closeTimer = null;
 
-  /* =========================================================
-     LOGIN
-     ========================================================= */
-
-  loginForm?.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const emailInput =
-      document.querySelector("#login-email") ||
-      loginForm.querySelector('input[type="email"]');
-
-    const passwordInput =
-      document.querySelector("#login-password") ||
-      loginForm.querySelector('input[type="password"]');
-
-    const email =
-      emailInput?.value.trim().toLowerCase() || "";
-
-    const password =
-      passwordInput?.value || "";
-
-    const user = getStoredUser();
-
-    if (!user) {
-      alert(
-        "Nenhuma conta foi encontrada. Crie sua conta primeiro."
+    const open = () => {
+      window.clearTimeout(closeTimer);
+      toggle.setAttribute("aria-expanded", "true");
+      toggle.setAttribute("aria-label", "Fechar menu");
+      menu.hidden = false;
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => menu.classList.add("is-open"))
       );
-
-      setAuthMode("signup");
-      return;
-    }
-
-    if (
-      user.email !== email ||
-      user.password !== password
-    ) {
-      alert("E-mail ou senha incorretos.");
-      return;
-    }
-
-    closeAuth();
-
-    setTimeout(() => {
-      if (user.onboardingCompleted) {
-        showDashboard(user);
-      } else {
-        startOnboarding(user);
-      }
-    }, 300);
-  });
-
-  /* =========================================================
-     ONBOARDING
-     ========================================================= */
-
-  function startOnboarding(user) {
-    if (!onboardingView) return;
-
-    onboardingData = {
-      diagnosis: "",
-      monitoring: "",
-      tracking: [],
-      support: ""
     };
 
-    currentStep = 1;
+    const close = () => {
+      toggle.setAttribute("aria-expanded", "false");
+      toggle.setAttribute("aria-label", "Abrir menu");
+      menu.classList.remove("is-open");
+      closeTimer = window.setTimeout(() => {
+        if (!menu.classList.contains("is-open")) menu.hidden = true;
+      }, 230);
+    };
 
-    onboardingView.classList.remove("hidden");
-    dashboardView?.classList.add("hidden");
-
-    document.body.classList.add("onboarding-open");
-
-    const firstName =
-      user?.name?.split(" ")[0] || "você";
-
-    if (checkinTitle) {
-      checkinTitle.textContent =
-        `Olá, ${firstName}! Vamos conhecer um pouco mais sobre você.`;
-    }
-
-    if (checkinSubtitle) {
-      checkinSubtitle.textContent =
-        "Essas perguntas fazem parte de uma demonstração personalizada do CardiAjuda.";
-    }
-
-    showStep(1);
-  }
-
-  function showStep(step) {
-    currentStep = step;
-
-    const steps =
-      document.querySelectorAll(".checkin-step");
-
-    steps.forEach((item) => {
-      const itemStep =
-        Number(item.dataset.step);
-
-      item.classList.toggle(
-        "active",
-        itemStep === step
-      );
+    toggle.addEventListener("click", () => {
+      if (toggle.getAttribute("aria-expanded") === "true") close();
+      else open();
     });
 
-    if (progressFill) {
-      progressFill.style.width =
-        `${(step / totalSteps) * 100}%`;
-    }
+    $$("a, button", menu).forEach((element) =>
+      element.addEventListener("click", close)
+    );
 
-    if (progressText) {
-      progressText.textContent =
-        `${String(step).padStart(2, "0")} / ${String(totalSteps).padStart(2, "0")}`;
-    }
-
-    if (backButton) {
-      backButton.classList.toggle(
-        "hidden",
-        step === 1
-      );
-    }
-
-    if (nextButton) {
-      nextButton.textContent =
-        step === totalSteps
-          ? "Finalizar"
-          : "Continuar";
-    }
-
-    restoreSelections();
-  }
-
-  /* =========================================================
-     RESTAURAR SELEÇÕES
-     ========================================================= */
-
-  function restoreSelections() {
-    const step =
-      document.querySelector(
-        `.checkin-step[data-step="${currentStep}"]`
-      );
-
-    if (!step) return;
-
-    const options =
-      step.querySelectorAll(".checkin-option");
-
-    options.forEach((option) => {
-      const value = option.dataset.value;
-
-      let selected = false;
-
-      if (currentStep === 1) {
-        selected =
-          value === onboardingData.diagnosis;
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && toggle.getAttribute("aria-expanded") === "true") {
+        close();
+        toggle.focus();
       }
-
-      if (currentStep === 2) {
-        selected =
-          value === onboardingData.monitoring;
-      }
-
-      if (currentStep === 3) {
-        selected =
-          onboardingData.tracking.includes(value);
-      }
-
-      if (currentStep === 4) {
-        selected =
-          value === onboardingData.support;
-      }
-
-      option.classList.toggle(
-        "selected",
-        selected
-      );
     });
   }
 
-  /* =========================================================
-     SELECIONAR OPÇÃO
-     ========================================================= */
+  /* ==========================================================================
+     Acesso (demonstração) — abrir/fechar modal, abas, validação, localStorage
+     ========================================================================== */
+  function initAuth() {
+    const modal = $("#auth-modal");
+    if (!modal) return;
 
-  document.addEventListener("click", (event) => {
-    const option =
-      event.target.closest(".checkin-option");
+    const dialog = $(".auth__dialog", modal);
+    const loginForm = $('[data-auth-form="login"]', modal);
+    const signupForm = $('[data-auth-form="signup"]', modal);
+    const successBox = $("#auth-success", modal);
+    const STORAGE_KEY = "cardiajudaUser";
 
-    if (!option) return;
+    let lastFocused = null;
 
-    const value =
-      option.dataset.value;
-
-    if (!value) return;
-
-    chooseAnswer(value, option);
-  });
-
-  function chooseAnswer(value, element) {
-    if (currentStep === 1) {
-      onboardingData.diagnosis = value;
-
-      document
-        .querySelectorAll(
-          '.checkin-step[data-step="1"] .checkin-option'
-        )
-        .forEach((option) => {
-          option.classList.remove("selected");
-        });
-
-      element.classList.add("selected");
-    }
-
-    if (currentStep === 2) {
-      onboardingData.monitoring = value;
-
-      document
-        .querySelectorAll(
-          '.checkin-step[data-step="2"] .checkin-option'
-        )
-        .forEach((option) => {
-          option.classList.remove("selected");
-        });
-
-      element.classList.add("selected");
-    }
-
-    if (currentStep === 3) {
-      if (
-        onboardingData.tracking.includes(value)
-      ) {
-        onboardingData.tracking =
-          onboardingData.tracking.filter(
-            (item) => item !== value
-          );
-
-        element.classList.remove("selected");
-      } else {
-        onboardingData.tracking.push(value);
-        element.classList.add("selected");
+    const storedUser = () => {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY));
+      } catch {
+        return null;
       }
+    };
+
+    function setFeedback(form, message, type) {
+      const feedback = $("[data-auth-feedback]", form);
+      if (!feedback) return;
+      feedback.textContent = message || "";
+      feedback.classList.remove("is-error", "is-success");
+      if (type) feedback.classList.add(`is-${type}`);
     }
 
-    if (currentStep === 4) {
-      onboardingData.support = value;
-
-      document
-        .querySelectorAll(
-          '.checkin-step[data-step="4"] .checkin-option'
-        )
-        .forEach((option) => {
-          option.classList.remove("selected");
-        });
-
-      element.classList.add("selected");
+    function setDialogLabelledBy(id) {
+      if (id) dialog.setAttribute("aria-labelledby", id);
     }
-  }
 
-  /* =========================================================
-     NAVEGAÇÃO DO ONBOARDING
-     ========================================================= */
+    function switchTab(mode) {
+      $$('[role="tab"]', modal).forEach((tab) => {
+        const selected = tab.dataset.authTab === mode;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      });
 
-  nextButton?.addEventListener("click", (event) => {
-    event.preventDefault();
-
-    if (currentStep < totalSteps) {
-      showStep(currentStep + 1);
-    } else {
-      finishCheckin(false);
+      loginForm.hidden = mode !== "login";
+      signupForm.hidden = mode !== "signup";
+      successBox.hidden = true;
+      setDialogLabelledBy(mode === "login" ? "auth-title-login" : "auth-title-signup");
     }
-  });
 
-  backButton?.addEventListener("click", (event) => {
-    event.preventDefault();
-
-    if (currentStep > 1) {
-      showStep(currentStep - 1);
+    function openAuth(mode = "signup") {
+      lastFocused = document.activeElement;
+      switchTab(mode);
+      modal.hidden = false;
+      document.body.style.overflow = "hidden";
+      requestAnimationFrame(() => modal.classList.add("is-open"));
+      const firstField = $(
+        mode === "login" ? 'input[name="email"]' : 'input[name="name"]',
+        mode === "login" ? loginForm : signupForm
+      );
+      window.setTimeout(() => firstField && firstField.focus(), 90);
     }
-  });
 
-  skipButton?.addEventListener("click", (event) => {
-    event.preventDefault();
+    function closeAuth() {
+      modal.classList.remove("is-open");
+      document.body.style.overflow = "";
+      window.setTimeout(() => {
+        modal.hidden = true;
+      }, 230);
+      if (lastFocused && typeof lastFocused.focus === "function") lastFocused.focus();
+    }
 
-    finishCheckin(true);
-  });
+    function showSuccess(title, message) {
+      loginForm.hidden = true;
+      signupForm.hidden = true;
+      $("#auth-success-title").textContent = title;
+      $("#auth-success-message").textContent = message;
+      successBox.hidden = false;
+      setDialogLabelledBy("auth-success-title");
+    }
 
-  closeCheckinButton?.addEventListener(
-    "click",
-    (event) => {
+    /* Aberturas (CTAs) e fechamentos (backdrop/botões) */
+    document.addEventListener("click", (event) => {
+      const opener = event.target.closest("[data-auth-open]");
+      if (opener) {
+        event.preventDefault();
+        openAuth(opener.dataset.authOpen || "login");
+        return;
+      }
+      if (event.target.closest("[data-auth-close]")) closeAuth();
+    });
+
+    /* Abas com navegação por setas */
+    $$('[role="tab"]', modal).forEach((tab) => {
+      tab.addEventListener("click", () => switchTab(tab.dataset.authTab));
+      tab.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        const otherMode = tab.dataset.authTab === "login" ? "signup" : "login";
+        const otherTab = $(`[data-auth-tab="${otherMode}"]`, modal);
+        if (otherTab) {
+          otherTab.focus();
+          otherTab.click();
+        }
+      });
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.hidden) closeAuth();
+    });
+
+    /* Cadastro */
+    signupForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      closeOnboarding();
-    }
-  );
 
-  /* =========================================================
-     FECHAR ONBOARDING
-     ========================================================= */
-
-  function closeOnboarding() {
-    onboardingView?.classList.remove("show");
-
-    setTimeout(() => {
-      onboardingView?.classList.add("hidden");
-
-      document.body.classList.remove(
-        "onboarding-open"
-      );
-    }, 250);
-  }
-
-  /* =========================================================
-     FINALIZAR ONBOARDING
-     ========================================================= */
-
-  function finishCheckin(skipped = false) {
-    const user = getStoredUser();
-
-    if (!user) return;
-
-    user.onboardingCompleted = true;
-
-    if (!skipped) {
-      user.onboarding = {
-        diagnosis: onboardingData.diagnosis,
-        monitoring: onboardingData.monitoring,
-        tracking: onboardingData.tracking,
-        support: onboardingData.support
-      };
-    }
-
-    saveUser(user);
-
-    closeOnboarding();
-
-    setTimeout(() => {
-      showDashboard(user);
-    }, 300);
-  }
-
-  /* =========================================================
-     DASHBOARD
-     ========================================================= */
-
-  function showDashboard(user) {
-    if (!dashboardView) return;
-
-    onboardingView?.classList.add("hidden");
-
-    dashboardView.classList.remove("hidden");
-
-    document.body.classList.add(
-      "dashboard-open"
-    );
-
-    const firstName =
-      user?.name?.split(" ")[0] || "você";
-
-    document
-      .querySelectorAll("[data-user-name]")
-      .forEach((element) => {
-        element.textContent = firstName;
-      });
-
-    buildPersonalSummary(user);
-  }
-
-  function buildPersonalSummary(user) {
-    const data = user?.onboarding || {};
-
-    const focusElement =
-      document.querySelector("#personal-focus");
-
-    const rhythmElement =
-      document.querySelector("#personal-rhythm");
-
-    const nextElement =
-      document.querySelector("#personal-next");
-
-    /* FOCO */
-
-    let focus =
-      "Seu bem-estar e acompanhamento";
-
-    switch (data.diagnosis) {
-      case "diabetes":
-        focus =
-          "Acompanhamento relacionado à glicose";
-        break;
-
-      case "hypertension":
-      case "hipertensao":
-        focus =
-          "Acompanhamento da pressão arterial";
-        break;
-
-      case "both":
-      case "ambos":
-        focus =
-          "Acompanhamento de pressão e glicose";
-        break;
-
-      case "none":
-      case "nenhum":
-        focus =
-          "Prevenção e hábitos saudáveis";
-        break;
-
-      case "prefer-not":
-      case "prefiro-nao-dizer":
-        focus =
-          "Um acompanhamento no seu ritmo";
-        break;
-    }
-
-    if (focusElement) {
-      focusElement.textContent = focus;
-    }
-
-    /* ROTINA */
-
-    let rhythm =
-      "Vamos construir uma rotina de acompanhamento.";
-
-    switch (data.monitoring) {
-      case "regular":
-      case "regularmente":
-        rhythm =
-          "Você já mantém uma rotina regular de acompanhamento.";
-        break;
-
-      case "sometimes":
-      case "as-vezes":
-        rhythm =
-          "Seu acompanhamento acontece de forma ocasional.";
-        break;
-
-      case "rarely":
-      case "quase-nunca":
-        rhythm =
-          "Podemos ajudar você a organizar melhor sua rotina.";
-        break;
-
-      case "starting":
-      case "comecando":
-        rhythm =
-          "Você está começando uma nova rotina de acompanhamento.";
-        break;
-    }
-
-    if (rhythmElement) {
-      rhythmElement.textContent = rhythm;
-    }
-
-    /* PRÓXIMO PASSO */
-
-    let next =
-      "Explore os recursos disponíveis no CardiAjuda.";
-
-    switch (data.support) {
-      case "reminders":
-      case "lembretes":
-        next =
-          "Organize lembretes para ajudar na sua rotina.";
-        break;
-
-      case "alerts":
-      case "alertas":
-        next =
-          "Acompanhe seus registros e fique atento aos alertas do sistema.";
-        break;
-
-      case "guidance":
-      case "orientacoes":
-        next =
-          "Explore conteúdos e informações para acompanhar sua rotina.";
-        break;
-
-      case "history":
-      case "historico":
-        next =
-          "Consulte seu histórico para visualizar seus registros.";
-        break;
-    }
-
-    if (nextElement) {
-      nextElement.textContent = next;
-    }
-
-    /* ITENS ACOMPANHADOS */
-
-    const trackingContainer =
-      document.querySelector(
-        "#personal-tracking"
-      );
-
-    if (!trackingContainer) return;
-
-    trackingContainer.innerHTML = "";
-
-    const labels = {
-      pressure: "Pressão",
-      pressao: "Pressão",
-
-      glucose: "Glicose",
-      glicemia: "Glicemia",
-
-      medications: "Medicamentos",
-      medicamentos: "Medicamentos",
-
-      habits: "Hábitos e rotina",
-      rotina: "Hábitos e rotina"
-    };
-
-    if (
-      data.tracking &&
-      data.tracking.length
-    ) {
-      data.tracking.forEach((item) => {
-        const badge =
-          document.createElement("span");
-
-        badge.className =
-          "tracking-badge";
-
-        badge.textContent =
-          labels[item] || item;
-
-        trackingContainer.appendChild(badge);
-      });
-    } else {
-      const badge =
-        document.createElement("span");
-
-      badge.className =
-        "tracking-badge";
-
-      badge.textContent =
-        "Nenhum item selecionado";
-
-      trackingContainer.appendChild(badge);
-    }
-  }
-
-  /* =========================================================
-     MONITORAMENTO REAL
-     ========================================================= */
-
-  const monitorStorageKey = "cardiajudaMonitorData";
-
-  function getMonitorData() {
-    try {
-      const existing = JSON.parse(localStorage.getItem(monitorStorageKey));
-
-      return {
-        glucose: Number(existing?.glucose ?? 96),
-        pressure: {
-          systolic: Number(existing?.pressure?.systolic ?? 120),
-          diastolic: Number(existing?.pressure?.diastolic ?? 80)
-        },
-        pressureHistory: Array.isArray(existing?.pressureHistory) && existing.pressureHistory.length
-          ? existing.pressureHistory.slice(-7)
-          : [118, 122, 120, 121, 118, 124, 120]
-      };
-    } catch (error) {
-      return {
-        glucose: 96,
-        pressure: { systolic: 120, diastolic: 80 },
-        pressureHistory: [118, 122, 120, 121, 118, 124, 120]
-      };
-    }
-  }
-
-  function saveMonitorData(data) {
-    localStorage.setItem(monitorStorageKey, JSON.stringify(data));
-  }
-
-  function updateGlucoseDisplay() {
-    const data = getMonitorData();
-    const glucoseValue = document.querySelector("#glucose-value");
-    const glucoseZone = document.querySelector("#glucose-zone");
-    const glucoseMarker = document.querySelector("#glucose-marker");
-
-    if (!glucoseValue || !glucoseMarker) return;
-
-    const value = Number(data.glucose);
-    glucoseValue.textContent = String(value);
-
-    const ratio = Math.min(100, Math.max(0, ((value - 40) / 210) * 100));
-    glucoseMarker.style.left = `${ratio}%`;
-
-    if (value < 80) {
-      glucoseZone.textContent = "Baixa";
-      glucoseZone.style.color = "#d79b8d";
-    } else if (value > 140) {
-      glucoseZone.textContent = "Alta";
-      glucoseZone.style.color = "#d79b8d";
-    } else {
-      glucoseZone.textContent = "Faixa acompanhada";
-      glucoseZone.style.color = "#3d9670";
-    }
-
-    const input = document.querySelector('[data-monitor-form="glucose"] input');
-    if (input) input.value = value;
-  }
-
-  function updatePressureDisplay() {
-    const data = getMonitorData();
-    const valueNode = document.querySelector("#pressure-value");
-    const statusNode = document.querySelector("#pressure-status");
-    const bars = document.querySelectorAll(".bars i");
-
-    if (!valueNode || !statusNode || !bars.length) return;
-
-    const systolic = Number(data.pressure.systolic);
-    const diastolic = Number(data.pressure.diastolic);
-    const pressureText = `${systolic}/${diastolic}`;
-    valueNode.textContent = pressureText;
-
-    const avg = (systolic + diastolic) / 2;
-    statusNode.textContent = avg > 110 ? "● estável" : "↗ acompanhamento";
-    statusNode.style.color = avg > 110 ? "#d56e5c" : "#CF2390";
-
-    const inputSystolic = document.querySelector('[data-monitor-form="pressure"] input[name="systolic"]');
-    const inputDiastolic = document.querySelector('[data-monitor-form="pressure"] input[name="diastolic"]');
-
-    if (inputSystolic) inputSystolic.value = systolic;
-    if (inputDiastolic) inputDiastolic.value = diastolic;
-
-    const values = data.pressureHistory.slice(-7);
-
-    values.forEach((value, index) => {
-      const bar = bars[index];
-      if (!bar) return;
-      const relativeHeight = Math.max(18, (value / 150) * 100);
-      bar.style.height = `${relativeHeight}%`;
-      bar.style.background = value > 130 ? "#e79a8b" : "#d7a7c8";
-    });
-  }
-
-  function syncMonitorCard(type, value) {
-    const data = getMonitorData();
-
-    if (type === "glucose") {
-      const nextValue = Number(value);
-      data.glucose = Number.isFinite(nextValue) ? Math.min(250, Math.max(40, nextValue)) : data.glucose;
-      saveMonitorData(data);
-      updateGlucoseDisplay();
-      return;
-    }
-
-    if (type === "pressure") {
-      const nextSystolic = Number(value.systolic);
-      const nextDiastolic = Number(value.diastolic);
-
-      data.pressure = {
-        systolic: Number.isFinite(nextSystolic) ? Math.min(220, Math.max(60, nextSystolic)) : data.pressure.systolic,
-        diastolic: Number.isFinite(nextDiastolic) ? Math.min(140, Math.max(40, nextDiastolic)) : data.pressure.diastolic
-      };
-
-      const nextMeasurement = Math.max(data.pressure.systolic, data.pressure.diastolic);
-      data.pressureHistory = [...data.pressureHistory.slice(-6), nextMeasurement];
-      saveMonitorData(data);
-      updatePressureDisplay();
-    }
-  }
-
-  document.addEventListener("click", (event) => {
-    const action = event.target.closest("[data-monitor-action]");
-    if (!action) return;
-
-    const type = action.dataset.monitorAction;
-    const card = action.closest(".monitor-card");
-    if (!card) return;
-
-    card.classList.add("is-editing");
-    const input = card.querySelector("input");
-    input?.focus();
-  });
-
-  document.addEventListener("click", (event) => {
-    const cancel = event.target.closest("[data-monitor-cancel]");
-    if (!cancel) return;
-
-    const type = cancel.dataset.monitorCancel;
-    const card = cancel.closest(".monitor-card");
-    if (!card) return;
-
-    card.classList.remove("is-editing");
-  });
-
-  document.addEventListener("submit", (event) => {
-    const form = event.target.closest("[data-monitor-form]");
-    if (!form) return;
-
-    event.preventDefault();
-
-    const type = form.dataset.monitorForm;
-    const card = form.closest(".monitor-card");
-
-    if (type === "glucose") {
-      const value = form.querySelector('input[name="value"]')?.value;
-      if (value === "" || Number.isNaN(Number(value))) {
+      const nameInput = $('input[name="name"]', signupForm);
+      const emailInput = $('input[name="email"]', signupForm);
+      const passwordInput = $('input[name="password"]', signupForm);
+
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim().toLowerCase();
+      const password = passwordInput.value;
+
+      if (!name) {
+        setFeedback(signupForm, "Digite seu nome.", "error");
+        nameInput.focus();
+        return;
+      }
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        setFeedback(signupForm, "Digite um e-mail válido.", "error");
+        emailInput.focus();
+        return;
+      }
+      if (password.length < 6) {
+        setFeedback(signupForm, "A senha precisa de pelo menos 6 caracteres.", "error");
+        passwordInput.focus();
+        return;
+      }
+      if (storedUser() && storedUser().email === email) {
+        setFeedback(signupForm, "Este e-mail já está cadastrado. Tente entrar.", "error");
         return;
       }
 
-      syncMonitorCard("glucose", value);
-    }
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ name, email, password, createdAt: Date.now() })
+      );
+      setFeedback(signupForm, "", null);
+      showSuccess(
+        "Conta criada!",
+        `Bem-vindo(a), ${name.split(" ")[0]}! Esta é uma demonstração: sua conta existe apenas neste dispositivo.`
+      );
+    });
 
-    if (type === "pressure") {
-      const systolic = form.querySelector('input[name="systolic"]')?.value;
-      const diastolic = form.querySelector('input[name="diastolic"]')?.value;
-
-      if (!systolic || !diastolic) return;
-
-      syncMonitorCard("pressure", {
-        systolic,
-        diastolic
-      });
-    }
-
-    card?.classList.remove("is-editing");
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-    updateGlucoseDisplay();
-    updatePressureDisplay();
-  });
-
-  /* =========================================================
-     LOGOUT
-     ========================================================= */
-
-  logoutButton?.addEventListener(
-    "click",
-    (event) => {
+    /* Login */
+    loginForm.addEventListener("submit", (event) => {
       event.preventDefault();
 
-      clearUser();
+      const email = $('input[name="email"]', loginForm).value.trim().toLowerCase();
+      const password = $('input[name="password"]', loginForm).value;
+      const user = storedUser();
 
-      dashboardView?.classList.add(
-        "hidden"
-      );
-
-      document.body.classList.remove(
-        "dashboard-open"
-      );
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-      });
-    }
-  );
-
-  /* =========================================================
-     VOLTAR PARA O SITE
-     ========================================================= */
-
-  document.addEventListener("click", (event) => {
-    const button =
-      event.target.closest(
-        "[data-open-site], #back-to-site"
-      );
-
-    if (!button) return;
-
-    event.preventDefault();
-
-    dashboardView?.classList.add(
-      "hidden"
-    );
-
-    document.body.classList.remove(
-      "dashboard-open"
-    );
-
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth"
-    });
-  });
-
-  /* =========================================================
-     MENU MOBILE
-     ========================================================= */
-
-  const menuButton =
-    document.querySelector("#menu-toggle");
-
-  const mobileMenu =
-    document.querySelector("#mobile-menu");
-
-  menuButton?.addEventListener(
-    "click",
-    (event) => {
-      event.preventDefault();
-
-      mobileMenu?.classList.toggle("open");
-      menuButton.classList.toggle("active");
-    }
-  );
-
-  mobileMenu
-    ?.querySelectorAll("a")
-    .forEach((link) => {
-      link.addEventListener(
-        "click",
-        () => {
-          mobileMenu.classList.remove(
-            "open"
-          );
-
-          menuButton?.classList.remove(
-            "active"
-          );
-        }
-      );
-    });
-
-  /* =========================================================
-     SCROLL SUAVE
-     ========================================================= */
-
-  document
-    .querySelectorAll('a[href^="#"]')
-    .forEach((link) => {
-      link.addEventListener(
-        "click",
-        (event) => {
-          const targetId =
-            link.getAttribute("href");
-
-          if (
-            !targetId ||
-            targetId === "#"
-          ) {
-            return;
-          }
-
-          /*
-           * Não intercepta links usados
-           * pelo sistema de autenticação.
-           */
-          if (
-            link.dataset.auth ||
-            link.id === "login-btn" ||
-            link.id === "signup-btn" ||
-            link.id === "create-account"
-          ) {
-            return;
-          }
-
-          const target =
-            document.querySelector(
-              targetId
-            );
-
-          if (!target) return;
-
-          event.preventDefault();
-
-          target.scrollIntoView({
-            behavior: "smooth",
-            block: "start"
-          });
-        }
-      );
-    });
-
-  /* =========================================================
-     GSAP
-     ========================================================= */
-
-  function initAnimations() {
-    if (
-      typeof gsap === "undefined"
-    ) {
-      return;
-    }
-
-    if (
-      window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches
-    ) {
-      return;
-    }
-
-    if (
-      typeof ScrollTrigger !==
-      "undefined"
-    ) {
-      gsap.registerPlugin(
-        ScrollTrigger
-      );
-    }
-
-    /* HERO */
-
-    const heroElements =
-      document.querySelectorAll(
-        ".hero-content > *, .hero-image"
-      );
-
-    if (heroElements.length) {
-      gsap.from(heroElements, {
-        opacity: 0,
-        y: 35,
-        duration: 0.9,
-        stagger: 0.12,
-        ease: "power3.out"
-      });
-    }
-
-    /* SEÇÕES */
-
-    if (
-      typeof ScrollTrigger !==
-      "undefined"
-    ) {
-      const elements =
-        document.querySelectorAll(
-          ".section-title, .section-description, .feature-card, .info-card, .about-content"
+      if (!user) {
+        setFeedback(
+          loginForm,
+          "Nenhuma conta encontrada neste dispositivo. Crie a sua.",
+          "error"
         );
+        return;
+      }
+      if (user.email !== email || user.password !== password) {
+        setFeedback(loginForm, "E-mail ou senha incorretos.", "error");
+        return;
+      }
 
-      elements.forEach(
-        (element) => {
-          gsap.from(element, {
-            opacity: 0,
-            y: 35,
-            duration: 0.8,
-            ease: "power2.out",
-
-            scrollTrigger: {
-              trigger: element,
-              start: "top 85%",
-              once: true
-            }
-          });
-        }
-      );
-    }
-
-    /* LOGO */
-
-    const logo =
-      document.querySelector(
-        ".logo"
-      );
-
-    if (logo) {
-      gsap.to(logo, {
-        y: -2,
-        duration: 2,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
-      });
-    }
-
-    /* IMAGEM HERO */
-
-    const heroImage =
-      document.querySelector(
-        ".hero-image img"
-      );
-
-    if (heroImage) {
-      gsap.to(heroImage, {
-        y: -8,
-        duration: 3,
-        repeat: -1,
-        yoyo: true,
-        ease: "sine.inOut"
-      });
-    }
-  }
-
-  /* =========================================================
-     BOTÕES MAGNÉTICOS
-     ========================================================= */
-
-  function initMagneticButtons() {
-    if (
-      window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches
-    ) {
-      return;
-    }
-
-    const buttons =
-      document.querySelectorAll(
-        ".btn, .cta-button, .hero-button"
-      );
-
-    buttons.forEach((button) => {
-      button.addEventListener(
-        "mousemove",
-        (event) => {
-          const rect =
-            button.getBoundingClientRect();
-
-          const x =
-            event.clientX -
-            rect.left -
-            rect.width / 2;
-
-          const y =
-            event.clientY -
-            rect.top -
-            rect.height / 2;
-
-          button.style.transform =
-            `translate(${x * 0.08}px, ${y * 0.08}px)`;
-        }
-      );
-
-      button.addEventListener(
-        "mouseleave",
-        () => {
-          button.style.transform = "";
-        }
+      setFeedback(loginForm, "", null);
+      showSuccess(
+        "Bem-vindo de volta!",
+        `Olá, ${user.name.split(" ")[0]}. Seu cuidado continua de onde parou.`
       );
     });
   }
 
-  /* =========================================================
-     INICIALIZAÇÃO
-     ========================================================= */
+  /* ==========================================================================
+     Demonstração de medição — classificação automática (normal/atenção/alerta)
+     ========================================================================== */
+  function initMeasurementDemo() {
+    const demoCard = $("#demo-card");
+    if (!demoCard) return;
 
-  initAnimations();
-  initMagneticButtons();
+    const views = {
+      pressure: {
+        history: [118, 121, 116, 124, 119, 122, 118], // sistólica (últimas 7)
+        unit: "mmHg",
+        max: 160,
+        last: null
+      },
+      glucose: {
+        history: [92, 98, 95, 101, 97, 94, 96],
+        unit: "mg/dL",
+        max: 150,
+        last: null
+      }
+    };
 
-  console.log(
-    "CardiAjuda iniciado com sucesso."
-  );
-});
+    const resultValue = $("#demo-result-value");
+    const resultUnit = $("#demo-result-unit");
+    const resultChip = $("#demo-result-chip");
+    const resultMessage = $("#demo-result-message");
+    const barsWrap = $("#demo-history-bars");
+
+    const LEVELS = {
+      normal: { label: "Normal", className: "chip--normal" },
+      attention: { label: "Atenção", className: "chip--attention" },
+      alert: { label: "Alerta", className: "chip--alert" }
+    };
+
+    function classifyPressure(sys, dia) {
+      if (sys < 90 || dia < 60) {
+        return {
+          level: "attention",
+          message:
+            "Pressão abaixo da faixa esperada. Refaça a medição com calma e, se o resultado persistir, converse com seu médico."
+        };
+      }
+      if (sys >= 130 || dia >= 80) {
+        return {
+          level: "alert",
+          message:
+            "Pressão elevada. Fique 5 minutos em repouso, meça de novo e informe seu médico."
+        };
+      }
+      if (sys >= 120) {
+        return {
+          level: "attention",
+          message:
+            "Pressão na faixa limítrofe. Vale acompanhar de perto e reforçar os hábitos saudáveis."
+        };
+      }
+      return {
+        level: "normal",
+        message: "Dentro da faixa esperada. Continue assim!"
+      };
+    }
+
+    function classifyGlucose(value) {
+      if (value < 70) {
+        return {
+          level: "alert",
+          message:
+            "Glicemia baixa (hipoglicemia). Avise seu médico e mantenha uma fonte de açúcar por perto."
+        };
+      }
+      if (value >= 126) {
+        return {
+          level: "alert",
+          message:
+            "Glicemia alta em jejum. Reforce o acompanhamento e converse com seu médico."
+        };
+      }
+      if (value >= 100) {
+        return {
+          level: "attention",
+          message:
+            "Glicemia um pouco acima do ideal em jejum. Fique de olho e mantenha a rotina."
+        };
+      }
+      return {
+        level: "normal",
+        message: "Dentro da faixa esperada em jejum. Continue assim!"
+      };
+    }
+
+    function render(result, displayValue, unit, history, max) {
+      resultValue.textContent = displayValue;
+      resultUnit.textContent = unit;
+
+      const level = LEVELS[result.level];
+      resultChip.className = `chip ${level.className}`;
+      resultChip.innerHTML = `<i></i>${level.label}`;
+      resultMessage.textContent = result.message;
+
+      barsWrap.innerHTML = "";
+      const last = history.slice(-7);
+      last.forEach((value, index) => {
+        const bar = document.createElement("i");
+        bar.style.height = `${Math.max(12, Math.min(100, (value / max) * 100))}%`;
+        if (index === last.length - 1) bar.className = `is-last is-last--${result.level}`;
+        barsWrap.appendChild(bar);
+      });
+    }
+
+    function setPanelFeedback(form, message) {
+      const feedback = $(".demo-panel__feedback", form);
+      if (feedback) feedback.textContent = message || "";
+    }
+
+    function record(type, result, displayValue) {
+      const view = views[type];
+      const lastValue = type === "pressure" ? Number(displayValue.split("/")[0]) : Number(displayValue);
+      view.history = [...view.history, lastValue].slice(-7);
+      view.last = { ...result, value: displayValue };
+      render(view.last, view.last.value, view.unit, view.history, view.max);
+    }
+
+    function showView(type) {
+      const view = views[type];
+      if (view.last) {
+        render(view.last, view.last.value, view.unit, view.history, view.max);
+      } else {
+        /* Valor inicial de cada aba (padrão do app) */
+        const initial =
+          type === "pressure"
+            ? { ...classifyPressure(118, 76), value: "118/76" }
+            : { ...classifyGlucose(96), value: "96" };
+        render(initial, initial.value, view.unit, view.history, view.max);
+      }
+    }
+
+    function handlePressure(form) {
+      const sysInput = $('input[name="systolic"]', form);
+      const diaInput = $('input[name="diastolic"]', form);
+      const sys = Number(sysInput.value);
+      const dia = Number(diaInput.value);
+
+      if (!Number.isFinite(sys) || sys < 60 || sys > 260) {
+        setPanelFeedback(form, "Informe uma pressão sistólica entre 60 e 260 mmHg.");
+        sysInput.focus();
+        return;
+      }
+      if (!Number.isFinite(dia) || dia < 40 || dia > 160) {
+        setPanelFeedback(form, "Informe uma pressão diastólica entre 40 e 160 mmHg.");
+        diaInput.focus();
+        return;
+      }
+      setPanelFeedback(form, "");
+      record("pressure", classifyPressure(sys, dia), `${sys}/${dia}`);
+    }
+
+    function handleGlucose(form) {
+      const input = $('input[name="value"]', form);
+      const value = Number(input.value);
+
+      if (!Number.isFinite(value) || value < 40 || value > 300) {
+        setPanelFeedback(form, "Informe uma glicemia entre 40 e 300 mg/dL.");
+        input.focus();
+        return;
+      }
+      setPanelFeedback(form, "");
+      record("glucose", classifyGlucose(value), String(value));
+    }
+
+    $$("form", demoCard).forEach((form) => {
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (form.dataset.demoPanel === "glucose") handleGlucose(form);
+        else handlePressure(form);
+      });
+    });
+
+    /* Abas de tipo de medição */
+    const tabs = $$("[data-demo-tab]", demoCard);
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((other) => {
+          const selected = other === tab;
+          other.setAttribute("aria-selected", String(selected));
+          other.tabIndex = selected ? 0 : -1;
+        });
+        $$("[data-demo-panel]", demoCard).forEach((panel) => {
+          panel.hidden = panel.dataset.demoPanel !== tab.dataset.demoTab;
+        });
+        showView(tab.dataset.demoTab);
+      });
+      tab.addEventListener("keydown", (event) => {
+        if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+        const index = tabs.indexOf(tab);
+        const other = tabs[(index + tabs.length + (event.key === "ArrowRight" ? 1 : -1)) % tabs.length];
+        other.focus();
+        other.click();
+      });
+    });
+
+    /* Estado inicial */
+    showView("pressure");
+  }
+
+  /* ==========================================================================
+     Animações — GSAP + ScrollTrigger (sutil, transform/opacity, ≤0.8s)
+     ========================================================================== */
+  function initAnimations() {
+    if (typeof gsap === "undefined" || prefersReducedMotion()) return;
+    if (typeof ScrollTrigger !== "undefined") gsap.registerPlugin(ScrollTrigger);
+
+    /* Hero — entrada suave (stagger discreto) */
+    const heroCopyItems = $$(".hero__copy [data-hero]");
+    if (heroCopyItems.length) {
+      gsap.from(heroCopyItems, {
+        opacity: 0,
+        y: 26,
+        duration: 0.65,
+        stagger: 0.08,
+        delay: 0.08,
+        ease: "power2.out"
+      });
+    }
+
+    const phone = $(".phone");
+    if (phone) {
+      gsap.from(phone, {
+        opacity: 0,
+        y: 22,
+        duration: 0.65,
+        delay: 0.25,
+        ease: "power2.out"
+      });
+    }
+
+    /* Cartões flutuantes: fade/escala (o y fica a cargo do parallax) */
+    const floatCards = $$(".float-card");
+    if (floatCards.length) {
+      gsap.from(floatCards, {
+        opacity: 0,
+        scale: 0.94,
+        duration: 0.5,
+        delay: 0.6,
+        stagger: 0.1,
+        ease: "power2.out"
+      });
+    }
+
+    /* Desenho da linha do gráfico do hero */
+    const chartLine = $("#hero-chart-line");
+    if (chartLine) {
+      gsap.from(chartLine, {
+        strokeDashoffset: 1,
+        duration: 0.8,
+        delay: 0.55,
+        ease: "power1.out"
+      });
+    }
+
+    if (typeof ScrollTrigger === "undefined") return;
+
+    /* Contadores animados */
+    $$(".counter").forEach((element) => {
+      const target = Number(element.dataset.count || 0);
+      const prefix = element.dataset.prefix || "";
+      const suffix = element.dataset.suffix || "";
+      const counter = { value: 0 };
+
+      gsap.to(counter, {
+        value: target,
+        duration: 0.8,
+        ease: "power1.out",
+        scrollTrigger: { trigger: element, start: "top 88%", once: true },
+        onUpdate: () => {
+          element.textContent = prefix + Math.round(counter.value) + suffix;
+        }
+      });
+    });
+
+    /* Revelações: fade + slide-up suave ao entrar na viewport */
+    $$("[data-reveal]").forEach((element) => {
+      gsap.from(element, {
+        opacity: 0,
+        y: 26,
+        duration: 0.65,
+        ease: "power2.out",
+        scrollTrigger: { trigger: element, start: "top 88%", once: true }
+      });
+    });
+
+    /* Grupos: stagger discreto nos filhos */
+    $$("[data-reveal-stagger]").forEach((group) => {
+      const items = $$("[data-reveal-item]", group);
+      if (!items.length) return;
+      gsap.from(items, {
+        opacity: 0,
+        y: 24,
+        duration: 0.6,
+        stagger: 0.08,
+        ease: "power2.out",
+        scrollTrigger: { trigger: group, start: "top 85%", once: true }
+      });
+    });
+
+    /* Parallax muito leve nos cartões flutuantes do hero */
+    const hero = $(".hero");
+    if (hero) {
+      const alertCard = $(".float-card--alert");
+      const consultCard = $(".float-card--consult");
+      const parallax = (element, y) => {
+        gsap.to(element, {
+          y,
+          ease: "none",
+          scrollTrigger: {
+            trigger: hero,
+            start: "top top",
+            end: "bottom top",
+            scrub: true
+          }
+        });
+      };
+      if (alertCard) parallax(alertCard, -16);
+      if (consultCard) parallax(consultCard, 12);
+    }
+
+    window.addEventListener("load", () => ScrollTrigger.refresh());
+  }
+
+  /* ==========================================================================
+     Inicialização
+     ========================================================================== */
+  function init() {
+    initHeader();
+    initMobileMenu();
+    initAuth();
+    initMeasurementDemo();
+    initAnimations();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
