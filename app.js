@@ -293,6 +293,7 @@
     const resultValue = $("#demo-result-value");
     const resultUnit = $("#demo-result-unit");
     const resultChip = $("#demo-result-chip");
+    const resultClass = $("#demo-result-class");
     const resultMessage = $("#demo-result-message");
     const barsWrap = $("#demo-history-bars");
 
@@ -302,30 +303,80 @@
       alert: { label: "Alerta", className: "chip--alert" }
     };
 
+    /* ----------------------------------------------------------------------
+       Referências usadas na classificação
+
+       Pressão arterial — Diretrizes Brasileiras de Hipertensão Arterial
+       (Sociedade Brasileira de Cardiologia, 2020), medida de consultório.
+       A categoria é sempre a mais alta entre sistólica e diastólica:
+         Ótima ............ < 120 e < 80
+         Normal ........... 120–129 e/ou 80–84
+         Pré-hipertensão .. 130–139 e/ou 85–89
+         HAS estágio 1 .... 140–159 e/ou 90–99
+         HAS estágio 2 .... 160–179 e/ou 100–109
+         HAS estágio 3 .... ≥ 180 e/ou ≥ 110
+         Hipotensão ....... < 90 e/ou < 60
+
+       Glicemia de jejum — Sociedade Brasileira de Diabetes / OMS:
+         Normal ........... 70–99 mg/dL
+         Pré-diabetes ..... 100–125 mg/dL (glicemia de jejum alterada)
+         Diabetes ......... ≥ 126 mg/dL (confirmar com segundo exame)
+         Hipoglicemia ..... < 70 mg/dL
+       ---------------------------------------------------------------------- */
     function classifyPressure(sys, dia) {
+      /* Faixas de hipertensão vêm primeiro: em casos de hipertensão sistólica
+         isolada (ex.: 180/55 mmHg) vale a categoria mais alta. */
+      if (sys >= 180 || dia >= 110) {
+        return {
+          level: "alert",
+          classification: "Hipertensão estágio 3 · ≥ 180/110 mmHg",
+          message:
+            "Nível muito elevado. Repita a medida após 5 minutos de repouso e, se o valor se mantiver — ou se houver dor no peito, falta de ar, visão turva ou dor de cabeça forte —, procure atendimento médico."
+        };
+      }
+      if (sys >= 160 || dia >= 100) {
+        return {
+          level: "alert",
+          classification: "Hipertensão estágio 2 · 160–179/100–109 mmHg",
+          message:
+            "Pressão bem acima do ideal. Refaça a medida com calma e converse com seu médico para ajustar o acompanhamento."
+        };
+      }
+      if (sys >= 140 || dia >= 90) {
+        return {
+          level: "alert",
+          classification: "Hipertensão estágio 1 · 140–159/90–99 mmHg",
+          message:
+            "Pressão acima da faixa considerada normal. Anote os valores de outros dias e leve o histórico ao seu médico."
+        };
+      }
+      if (sys >= 130 || dia >= 85) {
+        return {
+          level: "attention",
+          classification: "Pré-hipertensão · 130–139/85–89 mmHg",
+          message:
+            "Faixa que pede acompanhamento de perto: reforce os hábitos saudáveis e reavalie com um profissional."
+        };
+      }
       if (sys < 90 || dia < 60) {
         return {
           level: "attention",
+          classification: "Hipotensão · abaixo de 90/60 mmHg",
           message:
-            "Pressão abaixo da faixa esperada. Refaça a medição com calma e, se o resultado persistir, converse com seu médico."
+            "Pressão abaixo da faixa esperada. Refaça a medida em repouso e, se o valor persistir ou vier com tontura e fraqueza, fale com seu médico."
         };
       }
-      if (sys >= 130 || dia >= 80) {
+      if (sys >= 120 || dia >= 80) {
         return {
-          level: "alert",
+          level: "normal",
+          classification: "Pressão normal · 120–129/80–84 mmHg",
           message:
-            "Pressão elevada. Fique 5 minutos em repouso, meça de novo e informe seu médico."
-        };
-      }
-      if (sys >= 120) {
-        return {
-          level: "attention",
-          message:
-            "Pressão na faixa limítrofe. Vale acompanhar de perto e reforçar os hábitos saudáveis."
+            "Dentro da faixa esperada. Continue com a rotina de medições e os hábitos saudáveis."
         };
       }
       return {
         level: "normal",
+        classification: "Pressão ótima · abaixo de 120/80 mmHg",
         message: "Dentro da faixa esperada. Continue assim!"
       };
     }
@@ -334,26 +385,30 @@
       if (value < 70) {
         return {
           level: "alert",
+          classification: "Hipoglicemia · abaixo de 70 mg/dL",
           message:
-            "Glicemia baixa (hipoglicemia). Avise seu médico e mantenha uma fonte de açúcar por perto."
+            "Glicemia abaixo do esperado. Em caso de tremor, suor frio, palidez ou confusão, procure ajuda; tenha sempre uma fonte de açúcar por perto."
         };
       }
       if (value >= 126) {
         return {
           level: "alert",
+          classification: "Glicemia de jejum elevada · ≥ 126 mg/dL",
           message:
-            "Glicemia alta em jejum. Reforce o acompanhamento e converse com seu médico."
+            "Valor compatível com diabetes, que precisa ser confirmado por um segundo exame. Procure seu médico e, se passar de 250 mg/dL ou houver muita sede, urina frequente, náusea ou vômito, procure atendimento."
         };
       }
       if (value >= 100) {
         return {
           level: "attention",
+          classification: "Pré-diabetes · 100–125 mg/dL em jejum",
           message:
-            "Glicemia um pouco acima do ideal em jejum. Fique de olho e mantenha a rotina."
+            "Faixa de atenção: nesse estágio, alimentação equilibrada e atividade física ajudam a reverter o quadro. Vale repetir o exame e conversar com seu médico."
         };
       }
       return {
         level: "normal",
+        classification: "Glicemia de jejum normal · 70–99 mg/dL",
         message: "Dentro da faixa esperada em jejum. Continue assim!"
       };
     }
@@ -365,6 +420,7 @@
       const level = LEVELS[result.level];
       resultChip.className = `chip ${level.className}`;
       resultChip.innerHTML = `<i></i>${level.label}`;
+      if (resultClass) resultClass.textContent = result.classification || "";
       resultMessage.textContent = result.message;
 
       barsWrap.innerHTML = "";

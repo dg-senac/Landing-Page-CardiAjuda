@@ -313,15 +313,15 @@
             <ul class="legend">
               <li>
                 <span class="legend__dot legend__dot--normal" aria-hidden="true"></span>
-                <div><strong>Normal</strong><small>Dentro da faixa esperada.</small></div>
+                <div><strong>Normal</strong><small>Pressão ótima ou normal (abaixo de 130/85 mmHg) e glicemia de jejum entre 70 e 99 mg/dL.</small></div>
               </li>
               <li>
                 <span class="legend__dot legend__dot--attention" aria-hidden="true"></span>
-                <div><strong>Atenção</strong><small>Acompanhe de perto e reforce os hábitos saudáveis.</small></div>
+                <div><strong>Atenção</strong><small>Pré-hipertensão (130–139/85–89 mmHg), pressão baixa ou glicemia de jejum entre 100 e 125 mg/dL.</small></div>
               </li>
               <li>
                 <span class="legend__dot legend__dot--alert" aria-hidden="true"></span>
-                <div><strong>Alerta</strong><small>Resultado que pede a opinião do seu médico.</small></div>
+                <div><strong>Alerta</strong><small>Pressão a partir de 140/90 mmHg, glicemia de jejum a partir de 126 mg/dL ou hipoglicemia.</small></div>
               </li>
             </ul>
           </div>
@@ -364,6 +364,7 @@
                   <p class="demo-result__value"><strong id="demo-result-value">118/76</strong><small id="demo-result-unit">mmHg</small></p>
                   <span class="chip chip--normal" id="demo-result-chip"><i></i>Normal</span>
                 </div>
+                <p class="demo-result__class" id="demo-result-class">Pressão ótima · abaixo de 120/80 mmHg</p>
                 <p class="demo-result__message" id="demo-result-message">Dentro da faixa esperada. Continue assim!</p>
                 <div class="demo-history" aria-hidden="true">
                   <span>Últimas medições</span>
@@ -371,7 +372,46 @@
                 </div>
               </div>
             </div>
-            <p class="demo-card__note">Demonstração educativa — não substitui avaliação médica.</p>
+            <details class="demo-ref">
+              <summary>Tabelas de referência usadas na classificação</summary>
+              <div class="demo-ref__body">
+                <table>
+                  <caption>Pressão arterial no consultório · SBC, 2020</caption>
+                  <thead>
+                    <tr><th scope="col">Classificação</th><th scope="col">Sistólica / diastólica</th><th scope="col">Nível no app</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Ótima</td><td>&lt; 120 / &lt; 80</td><td class="demo-ref__level demo-ref__level--normal">Normal</td></tr>
+                    <tr><td>Normal</td><td>120–129 / 80–84</td><td class="demo-ref__level demo-ref__level--normal">Normal</td></tr>
+                    <tr><td>Pré-hipertensão</td><td>130–139 / 85–89</td><td class="demo-ref__level demo-ref__level--attention">Atenção</td></tr>
+                    <tr><td>Hipertensão estágio 1</td><td>140–159 / 90–99</td><td class="demo-ref__level demo-ref__level--alert">Alerta</td></tr>
+                    <tr><td>Hipertensão estágio 2</td><td>160–179 / 100–109</td><td class="demo-ref__level demo-ref__level--alert">Alerta</td></tr>
+                    <tr><td>Hipertensão estágio 3</td><td>≥ 180 / ≥ 110</td><td class="demo-ref__level demo-ref__level--alert">Alerta</td></tr>
+                    <tr><td>Hipotensão</td><td>&lt; 90 / &lt; 60</td><td class="demo-ref__level demo-ref__level--attention">Atenção</td></tr>
+                  </tbody>
+                </table>
+
+                <table>
+                  <caption>Glicemia de jejum · SBD / OMS</caption>
+                  <thead>
+                    <tr><th scope="col">Classificação</th><th scope="col">Valor (mg/dL)</th><th scope="col">Nível no app</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Hipoglicemia</td><td>&lt; 70</td><td class="demo-ref__level demo-ref__level--alert">Alerta</td></tr>
+                    <tr><td>Normal</td><td>70–99</td><td class="demo-ref__level demo-ref__level--normal">Normal</td></tr>
+                    <tr><td>Pré-diabetes (jejum alterado)</td><td>100–125</td><td class="demo-ref__level demo-ref__level--attention">Atenção</td></tr>
+                    <tr><td>Diabetes<sup>*</sup></td><td>≥ 126</td><td class="demo-ref__level demo-ref__level--alert">Alerta</td></tr>
+                  </tbody>
+                </table>
+
+                <p class="demo-ref__foot">
+                  A classificação da pressão usa sempre a categoria mais alta entre sistólica e diastólica
+                  (valores de consultório; em casa, os números tendem a ser menores).
+                  <sup>*</sup>O diagnóstico de diabetes é confirmado com um segundo exame.
+                </p>
+              </div>
+            </details>
+            <p class="demo-card__note">Classificação baseada na Diretriz Brasileira de Hipertensão (SBC, 2020) e nos critérios da SBD/OMS para glicemia de jejum. Demonstração educativa — não substitui avaliação médica.</p>
           </div>
         </div>
       </div>
